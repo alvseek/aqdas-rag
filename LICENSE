@@ -19,13 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-NOTE ON THE SOURCE TEXT
-
-This licence covers the software in this repository only.
-
-The Kitáb-i-Aqdas is © Bahá'í World Centre. No part of its text is included or
-redistributed here — `fetch.py` downloads it from the Bahá'í Reference Library
-(https://www.bahai.org) at build time, and `data/` is not committed.
