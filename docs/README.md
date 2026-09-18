@@ -208,8 +208,8 @@ Counted from `data/corpus.jsonl`:
 | Notes | 194 | Universal House of Justice |
 | Questions and Answers | 103 | Bahá'u'lláh |
 
-487 units, ~46k words (~78k tokens as rendered context). All 194 Note→¶ links resolve;
-114 of 190 paragraphs carry at least one Note.
+487 units, ~49k words. All 194 Note→¶ links resolve; 114 of 190 paragraphs carry at
+least one Note.
 
 ### External integrations
 
@@ -323,8 +323,12 @@ measurement.
 comparison in this document and is the weakest number here. A 40-case run costs ~3.1M
 input tokens.
 
-**Note 125 is truncated in the dense index.** The only record of 487 exceeding the
-model's 512-token limit. BM25 indexes it whole, so fusion partly covers the loss.
+**Seven Notes are truncated in the dense index.** Notes 38, 160, 170, 23, 56, 183 and 86
+exceed the model's 512-token limit, the longest at 656 words. This got worse on purpose:
+repairing the blockquote parsing added ~19k characters of quoted commentary, and the
+Notes that gained most are the ones that now overflow. BM25 indexes them whole, so fusion
+partly covers the loss, but a passage quoted deep inside a long Note is reachable only
+lexically.
 
 **Three sections of the volume are fetched but not indexed** — the Introduction and
 Preface, the Synopsis and Codification, and the Supplementary Texts. So a question the

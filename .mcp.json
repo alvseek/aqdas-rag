@@ -2,7 +2,7 @@
   "mcpServers": {
     "aqdas": {
       "command": "uv",
-      "args": ["run", "--directory", "C:\Work\research\aqdas-rag", "python", "-m", "aqdas_rag.server"]
+      "args": ["run", "--directory", "C:/Work/research/aqdas-rag", "python", "-m", "aqdas_rag.server"]
     }
   }
 }

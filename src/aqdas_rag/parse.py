@@ -184,10 +184,17 @@ def parse_notes(soup: BeautifulSoup, fragment: int) -> list[Record]:
                 if f"¶{ref}" not in annotates:
                     annotates.append(f"¶{ref}")
 
+        # Every <p> in the section, at any depth, in document order. The
+        # Reference Library wraps quoted passages -- Shoghi Effendi,
+        # 'Abdu'l-Bahá, the House of Justice -- in a nested block, so a
+        # direct-children-only walk silently drops the quotation while
+        # leaving a note that still reads as complete. Measured: 24 Notes
+        # lost ~19k characters that way, including the clarification that
+        # polygamy is not permitted (Note 89).
         body_parts = [
             clean_text(p)
-            for p in section.find_all("p", recursive=False)
-            if p is not header
+            for p in section.find_all("p", recursive=True)
+            if p is not header and header not in p.parents
         ]
         body = " ".join(part for part in body_parts if part).strip()
 
@@ -228,8 +235,8 @@ def parse_qa(soup: BeautifulSoup, fragment: int) -> list[Record]:
             continue
 
         question, answer, anchor = "", "", ""
-        for p in section.find_all("p", recursive=False):
-            if p is num_el:
+        for p in section.find_all("p", recursive=True):
+            if p is num_el or num_el in p.parents:
                 continue
             text = clean_text(p)
             if text.startswith("Question:"):
