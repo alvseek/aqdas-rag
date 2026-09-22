@@ -40,24 +40,18 @@ class HybridRetriever:
         self.semantic = DenseRetriever(corpus)
 
     def search(self, query: str, k: int = 5, floor: float = RELEVANCE_FLOOR) -> list[Hit]:
-        # The floor is a TOPICALITY gate, not a ranking function, and it is
-        # applied on the lexical side only. Its question is "does this book
-        # discuss this subject at all", which rare-term overlap answers well
-        # and cosine similarity answers badly -- an embedding model returns a
-        # confident nearest neighbour for any input, including a question about
-        # semiconductors, so a dense-side floor would need a threshold on a
-        # score with no natural zero.
-        #
-        # If nothing clears the gate, the honest answer is silence, and no
-        # amount of fusion should manufacture a result.
+        # Pure-RAG mode 2026-09-22: no topicality gate. The floor is off
+        # (RELEVANCE_FLOOR = 0.0), and a lexical miss no longer blocks the
+        # dense backend -- every backend's ranking fuses, and whatever scores
+        # highest returns. Silence is the reader model's decision, not ours.
         lexical_hits = self.lexical.search(query, k=FUSION_DEPTH, floor=floor)
-        if not lexical_hits:
-            return []
-
         rankings = [
             lexical_hits,
             self.semantic.search(query, k=FUSION_DEPTH, floor=0.0),
         ]
+        rankings = [r for r in rankings if r]
+        if not rankings:
+            return []
 
         fused: dict[str, float] = {}
         record_by_citation: dict[str, dict] = {}

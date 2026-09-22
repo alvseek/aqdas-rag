@@ -36,31 +36,13 @@ B = 0.75
 
 # Minimum IDF-mass coverage for a result to be returned at all.
 #
-# Without a floor, BM25 always returns something: one weak match on a common
-# word is enough, so a question about semiconductor foundries comes back with
-# ten confident-looking passages and the answering model assumes they are
-# relevant. That is the mechanism behind grounded-sounding hallucination, and
-# it defeats the promise to say when the book is silent.
-#
-# The value is measured, not chosen -- see calibrate.py, which scores eighteen
-# questions the book answers against six it does not. Measured with stemming on
-# and the reader-phrased questions included:
-#     worst on-topic  0.335   (what happens to someone who steals)
-#     best off-topic  0.247   (best training split for hypertrophy)
-# 0.29 sits in that gap.
-#
-# 🚨 The margin is THIN -- 0.088, down from 0.223 before reader-phrased
-# questions were added to the set. That narrowing is the real finding: the
-# easy queries borrowed the book's own vocabulary and made the floor look safer
-# than it is. A lexical retriever cannot reach a law stated in words the reader
-# does not use, and no floor fixes that -- set it high and real questions are
-# reported as silent, set it low and off-topic noise returns. This is the
-# evidence for adding a dense retriever, not a number to keep tuning.
-#
-# Re-run the calibration after any change to tokenisation or corpus scope; if
-# the two groups ever overlap, no floor is safe and it says so rather than
-# suggesting one.
-RELEVANCE_FLOOR = 0.29
+# DISABLED 2026-09-22: pure-RAG mode per Alvi's call. The floor manufactured
+# false silence on verbose queries (debt 0.134 vs 0.29) and no threshold
+# separated topicality from resemblance on the hard off-topic set
+# (lexical -0.170, dense -0.065), so the gate is off and the reader model
+# owns the silence decision. Set to 0.0 = no gate; coverage() still exists
+# for measurement in calibrate.py.
+RELEVANCE_FLOOR = 0.0
 
 STOPWORDS = {
     "the", "and", "of", "to", "in", "is", "it", "that", "for", "on", "with",

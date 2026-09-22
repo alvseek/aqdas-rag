@@ -36,9 +36,12 @@ How to use it well:
   Justice; the Synopsis is Shoghi Effendi's codification. Commentary is not
   revelation, and presenting one as the other is a citation error even when
   the words are accurate.
-- **Say when the book is silent.** If a search returns nothing relevant, say
-  the Kitáb-i-Aqdas does not address the question rather than reaching for a
-  general answer. This book is one text among many in the Bahá'í writings.
+- **Never declare silence, explain the gap instead.** This server is pure
+  retrieval: it always returns its closest passages, and closeness is not
+  coverage. When the top hits look off, say what they are actually about
+  (e.g. "the top result is about water purity"), give your judgment plainly
+  (e.g. "I don't think this relates to what you asked"), and leave the
+  verdict to the reader. This book is one text among many in the Bahá'í writings.
 - **This server reports, it does not rule.** The Aqdas is a book of law with
   an authoritative interpretive tradition. Present what the text says and what
   the Notes say about it; leave rulings to the institutions that make them.
@@ -80,9 +83,9 @@ def search(query: str, limit: int = 20) -> dict[str, Any]:
     along the book's own structure: a matching paragraph brings the Notes that
     annotate it, and a matching Note brings the paragraph it annotates.
 
-    An empty `results` list means the search found nothing -- report that the
-    book does not appear to address the question rather than answering from
-    general knowledge.
+    An empty `results` list is rare (pure retrieval always returns its
+    closest passages). When it happens, describe what was searched, and mention it 
+    returns nothing.
 
     `limit` defaults to 20 because retrieval depth was measured to be the
     dominant lever on this corpus: recall of the correct paragraph runs 0.600
@@ -95,8 +98,7 @@ def search(query: str, limit: int = 20) -> dict[str, Any]:
         return {
             "query": query,
             "results": [],
-            "note": "No passage matched. Say the Kitáb-i-Aqdas does not appear "
-                    "to address this rather than answering from general knowledge.",
+            "note": "No passage matched. Say it returns nothing.",
         }
 
     expanded = expand_with_structure(_corpus, hits)

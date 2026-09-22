@@ -98,16 +98,16 @@ async def run() -> int:
             str(bad)[:80],
         )
 
-        # --- silence must be reported, not filled ---------------------------
+        # --- pure RAG always returns something, silence is the reader's call --
         empty = unwrap(
             await client.call_tool(
                 "search", {"query": "quarterly earnings guidance semiconductor foundry"}
             )
         )
         check(
-            "an off-topic query returns silence",
-            "zero results plus an instruction not to answer from general knowledge",
-            empty["results"] == [] and "note" in empty,
+            "an off-topic query returns passages (pure RAG, no gate)",
+            "non-empty results; the reader model decides silence, not retrieval",
+            len(empty["results"]) > 0 and "note" not in empty,
             f"{len(empty['results'])} results",
         )
 
