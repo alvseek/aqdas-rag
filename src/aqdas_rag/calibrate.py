@@ -1,9 +1,17 @@
 """Measure what separates an on-topic query from an off-topic one.
 
 Whether a relevance floor can work at all is a question to measure, not assume.
-This reports the separation on a real query set, and on this corpus the two
-groups overlap -- which is why the gate is off (ADR-007). Re-run it to re-check
-that conclusion rather than trusting it.
+Run as shipped this reports a clean gap -- worst on-topic 0.335 against best
+off-topic 0.247 -- and suggests a floor of 0.29.
+
+That result is a trap. The OFF_TOPIC list below is drawn from a different
+universe of discourse; the same questions written in the book's own register
+(army service, insurance, copyright) score far higher and the separation goes
+negative. Measured on such a set (2026-09-24): BM25 best off-topic 0.619 against
+a 0.335 worst on-topic, and dense cosine 0.713 against 0.648 -- the dense gap of
+-0.065 is the figure recorded in ADR-007. No threshold avoids both failure
+directions, which is why the gate is off. Add hard negatives to OFF_TOPIC before
+trusting any suggested floor.
 
 The statistic is **IDF-mass coverage**: of the total rarity-weight of the terms
 in the question, what fraction is actually present in the retrieved unit. Raw

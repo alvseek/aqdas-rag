@@ -318,7 +318,11 @@ Accepted because the alternative was worse: a gate that returns nothing is a con
 lie when its misses land on questions the book answers, and no threshold was found that
 avoided both directions — on a hard off-topic set written in the book's own register
 (army service, insurance, copyright), the separation collapsed to **-0.170** lexically
-and **-0.065** dense.
+and **-0.065** dense. Re-measured 2026-09-24 on a freshly chosen hard set: dense
+reproduces at exactly **-0.065**, and the lexical separation collapses further, to
+**-0.284**. Note that the shipped `calibrate.py` still measures a *clean* gap on its easy
+off-topic list and suggests a floor -- extend `OFF_TOPIC` with hard negatives before
+trusting that.
 
 ---
 
