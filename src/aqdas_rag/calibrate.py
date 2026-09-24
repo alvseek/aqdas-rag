@@ -1,17 +1,18 @@
 """Measure what separates an on-topic query from an off-topic one.
 
 Whether a relevance floor can work at all is a question to measure, not assume.
-Run as shipped this reports a clean gap -- worst on-topic 0.335 against best
-off-topic 0.247 -- and suggests a floor of 0.29.
+This reports the separation on a real query set, so the answer is read off data
+rather than chosen by feel.
 
-That result is a trap. The OFF_TOPIC list below is drawn from a different
-universe of discourse; the same questions written in the book's own register
-(army service, insurance, copyright) score far higher and the separation goes
-negative. Measured on such a set (2026-09-24): BM25 best off-topic 0.619 against
-a 0.335 worst on-topic, and dense cosine 0.713 against 0.648 -- the dense gap of
--0.065 is the figure recorded in ADR-007. No threshold avoids both failure
-directions, which is why the gate is off. Add hard negatives to OFF_TOPIC before
-trusting any suggested floor.
+The off-topic questions deliberately come in two kinds, because the difference
+between them is the finding. The easy group is from another universe of
+discourse and separates cleanly, which makes a floor look safe. The hard group
+asks about things the book does not answer using the book's own register --
+believer, prayer, company, tax -- and scores high enough to invert the
+separation. With both groups in place this reports OVERLAPPING and suggests no
+floor, which is the honest answer and the reason the gate is off (ADR-007).
+Measured 2026-09-24: BM25 best off-topic 0.619 against a 0.335 worst on-topic;
+dense cosine 0.713 against 0.648, the -0.065 gap recorded in ADR-007.
 
 The statistic is **IDF-mass coverage**: of the total rarity-weight of the terms
 in the question, what fraction is actually present in the retrieved unit. Raw
@@ -59,8 +60,18 @@ ON_TOPIC = [
     "is music allowed",
 ]
 
-# Questions it does not address at all.
-OFF_TOPIC = [
+# Questions it does not address, in two groups that behave very differently.
+#
+# The first group is from another universe of discourse. Its overlap with the
+# corpus is near zero, so it separates cleanly and makes a floor look safe.
+#
+# The second group is the one that matters. These are also questions the Aqdas
+# does not answer, but they are asked in the book's own register -- ordinary
+# words it knows (believer, prayer, company, tax) -- so IDF-mass coverage scores
+# them high. On this group the separation goes negative and the floor fails.
+# Keep both: the gap between the two groups IS the finding, because a retriever
+# measures resemblance to the corpus, not topicality.
+OFF_TOPIC_EASY = [
     "quarterly earnings guidance semiconductor foundry",
     "how do I configure a kubernetes ingress controller",
     "best training split for hypertrophy",
@@ -68,6 +79,21 @@ OFF_TOPIC = [
     "typescript generic type inference rules",
     "how to reheat pizza without it going soggy",
 ]
+
+# The hard negatives -- see the note above and ADR-007.
+OFF_TOPIC_HARD = [
+    "is a believer permitted to serve in the army",
+    "what insurance should a small business carry",
+    "how long does copyright last on a book",
+    "should a believer join a political party",
+    "how do I set up a limited company",
+    "how much income tax do I owe",
+    "who should I vote for in the election",
+    "how do I apply for a university scholarship",
+]
+
+# The union, for anything that just wants "questions the book does not answer".
+OFF_TOPIC = OFF_TOPIC_EASY + OFF_TOPIC_HARD
 
 
 def best_coverage(retriever: BM25Retriever, query: str) -> tuple[float, str]:
@@ -86,27 +112,34 @@ def best_coverage(retriever: BM25Retriever, query: str) -> tuple[float, str]:
     return best, best_cite
 
 
+def score_group(retriever: BM25Retriever, label: str,
+                queries: list[str]) -> list[float]:
+    print(f"\n{label}")
+    scores = []
+    for q in queries:
+        c, cite = best_coverage(retriever, q)
+        scores.append(c)
+        print(f"  {c:5.2f}  {cite:<10} {q}")
+    return scores
+
+
 def main() -> int:
     retriever = BM25Retriever(Corpus())
 
-    print("ON-TOPIC (should score high)")
-    on_scores = []
-    for q in ON_TOPIC:
-        c, cite = best_coverage(retriever, q)
-        on_scores.append(c)
-        print(f"  {c:5.2f}  {cite:<10} {q}")
+    on_scores = score_group(retriever, "ON-TOPIC (should score high)", ON_TOPIC)
+    easy_off = score_group(
+        retriever, "OFF-TOPIC, another universe of discourse (easy)", OFF_TOPIC_EASY
+    )
+    hard_off = score_group(
+        retriever, "OFF-TOPIC, in the book's own register (hard)", OFF_TOPIC_HARD
+    )
 
-    print("\nOFF-TOPIC (should score low)")
-    off_scores = []
-    for q in OFF_TOPIC:
-        c, cite = best_coverage(retriever, q)
-        off_scores.append(c)
-        print(f"  {c:5.2f}  {cite:<10} {q}")
-
-    lo_on, hi_off = min(on_scores), max(off_scores)
+    lo_on = min(on_scores)
     print(f"\nworst on-topic : {lo_on:.3f}")
-    print(f"best off-topic : {hi_off:.3f}")
+    print(f"best easy off  : {max(easy_off):.3f}   separation {lo_on - max(easy_off):+.3f}")
+    print(f"best hard off  : {max(hard_off):.3f}   separation {lo_on - max(hard_off):+.3f}")
 
+    hi_off = max(max(easy_off), max(hard_off))
     if lo_on > hi_off:
         floor = round((lo_on + hi_off) / 2, 2)
         print(f"separation     : CLEAN (gap {lo_on - hi_off:.3f})")
