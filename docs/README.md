@@ -39,7 +39,7 @@ of N tokens — it is the unit a reader would actually cite.
         ▼
   data/corpus.jsonl      487 citable records, each with author + URL
         │
-        ├──► retrieve.py   BM25 + stemming + relevance floor
+        ├──► retrieve.py   BM25 + stemming + structural expansion
         ├──► dense.py      bge-base-en-v1.5, ONNX/CPU, cached vectors
         │         │
         │         └──► hybrid.py    reciprocal rank fusion  ◄── production
@@ -134,10 +134,13 @@ MCP config. Then ask questions in plain language — the agent calls the tools i
 | `notes_on(paragraph)` | The Universal House of Justice's commentary on a given paragraph |
 | `corpus_stats()` | What the server actually holds, counted from the corpus |
 
-**What to expect.** Roughly 1 question in 6 phrased in everyday words will miss. When it
-misses, it usually does *not* report silence — it answers from adjacent passages. The
-citations are always real and clickable, so treat a confident answer as *"here is a
-passage near your question"* rather than *"here is the passage"*, and click through.
+**What to expect.** Retrieval is pure: the server returns its closest passages rather
+than deciding whether they answer you, so an off-topic question still comes back
+non-empty. Roughly 1 question in 6 phrased in everyday words misses, and closeness is
+not coverage — the citations are always real and clickable, so treat a confident answer
+as *"here is a passage near your question"* rather than *"here is the passage"*, and
+click through. The server's instructions ask the answering agent to say what the top
+hits are actually about and leave the verdict to you.
 
 It has never been observed to invent a citation: in every measured case where the
 correct paragraph was absent from context, it declined to cite it.
@@ -150,7 +153,7 @@ correct paragraph was absent from context, it declined to cite it.
 | `uv run python -m aqdas_rag.smoke_test` | 9 checks over a real MCP session |
 | `uv run python -m aqdas_rag.evaluate` | Compare bm25 / dense / hybrid on 369 cases |
 | `uv run python -m aqdas_rag.significance` | McNemar test on the paired outcomes |
-| `uv run python -m aqdas_rag.calibrate` | Re-derive the relevance floor |
+| `uv run python -m aqdas_rag.calibrate` | Measure whether any relevance floor separates on-topic from off-topic questions |
 | `uv run python -m aqdas_rag.llm` | Report which model routes are usable |
 | `uv run python -m aqdas_rag.baseline --sample 40` | RAG accuracy, split into retrieval vs generation |
 
@@ -166,12 +169,13 @@ correct paragraph was absent from context, it declined to cite it.
      than scores, because BM25 is unbounded and cosine is bounded — normalising them
      against each other would need a conversion nobody can justify.
 
-2. **Gate on topicality** (`retrieve.py`)
-   - A measured floor on IDF-mass coverage decides whether the book discusses the subject
-     at all. It is applied on the **lexical** side only: an embedding model returns a
-     confident nearest neighbour for any input, including a question about semiconductors,
-     so a dense-side floor would need a threshold on a score with no natural zero.
-     Nothing clearing the gate means an empty result and an instruction to say so.
+2. **No topicality gate** (`retrieve.py`)
+   - The server does not decide whether the book discusses a subject. A measured gate on
+     IDF-mass coverage was removed on 2026-09-22 because it manufactured false silence on
+     verbose queries, and no threshold on either retrieval signal separated "the book
+     addresses this" from "the question resembles the book" (ADR-007). Pure retrieval
+     hands back its closest passages instead; closeness is not coverage, so the silence
+     verdict belongs to the answering agent.
 
 3. **Expand along the book's own links** (`retrieve.py`)
    - A retrieved paragraph pulls the Notes that annotate it; a retrieved Note pulls the
@@ -265,6 +269,7 @@ loud, whereas an inferred mapping is a guess wearing a number.
 
 ### ADR-003: The relevance floor is measured, and gates lexically (2026-09-18)
 
+**Status**: Superseded by ADR-007 (2026-09-22).
 **Context**: A retriever always returns something, which is the mechanism behind
 grounded-sounding hallucination.
 **Decision**: Derive the floor from a calibration run (18 on-topic vs 6 off-topic
@@ -298,16 +303,34 @@ instructions tell the calling agent to quote rather than paraphrase, never to pr
 commentary as revelation, and to leave rulings to the institutions that make them.
 **Trade-off**: Answers are less fluent than a summary would be. Accepted deliberately.
 
+### ADR-007: No topicality gate; the reader owns the silence verdict (2026-09-22)
+
+**Context**: ADR-003's floor was a post-filter on IDF-mass coverage, and the queries it
+protected were not the queries it hurt. A verbose question about debt scored **0.134**
+against a floor of 0.29 and reported the book silent on a subject five of its records
+address, because adding synonyms to be thorough was exactly what sank the score.
+**Decision**: Remove the gate (`RELEVANCE_FLOOR = 0.0`). Every backend's ranking fuses,
+the highest scores return, and the server never declares silence — it tells the calling
+agent to name what the top hits are actually about and leave the verdict to the reader.
+**Trade-off**: An off-topic question returns adjacent passages instead of an empty
+result, so honesty is now a property of the reader model rather than of the server.
+Accepted because the alternative was worse: a gate that returns nothing is a confident
+lie when its misses land on questions the book answers, and no threshold was found that
+avoided both directions — on a hard off-topic set written in the book's own register
+(army service, insurance, copyright), the separation collapsed to **-0.170** lexically
+and **-0.065** dense.
+
 ---
 
 ## What's Broken / Known Debts?
 
 **Dangerous — it answers confidently when it should stay silent.** Measured over 40
-reader-phrased questions: when the correct paragraph was not retrieved (16 cases), it
-admitted silence in only **4** and answered from adjacent passages in **12**. The
-relevance floor cannot help, because the retriever came back full rather than empty.
+reader-phrased questions: when the correct paragraph was not retrieved (16 cases), the
+reader admitted silence in only **4** and answered from adjacent passages in **12**.
 Whether those 12 answers are actually *wrong* has not been checked — they cite real
-passages accurately — but the system did not signal uncertainty.
+passages accurately — but the system did not signal uncertainty. The gate that used to
+stand in front of this was measured and removed (ADR-007), which moves the entire burden
+onto the reader's instructions.
 
 **Retrieval is the bottleneck, and it is where any further work belongs.**
 `P(cites gold) = P(retrieved) × P(cites | retrieved) = 0.600 × 0.833 = 0.500` at
@@ -331,9 +354,9 @@ partly covers the loss, but a passage quoted deep inside a long Note is reachabl
 lexically.
 
 **Three sections of the volume are fetched but not indexed** — the Introduction and
-Preface, the Synopsis and Codification, and the Supplementary Texts. So a question the
-Introduction answers gets "the Aqdas does not address this", which is true of the main
-text and misleading about the book.
+Preface, the Synopsis and Codification, and the Supplementary Texts. A question the
+Introduction answers therefore lands on the main text's closest passages instead, which
+is a retrieval gap rather than a statement about the volume.
 
 **The Synopsis cannot serve as ground truth.** It looked like a free authoritative answer
 key — a topical classification of every law — but the Reference Library edition carries
@@ -341,7 +364,11 @@ the outline with no paragraph references. The eval set is derived from Note→¶
 instead, which is better anyway: the gloss half tests the vocabulary gap the Synopsis
 could not have.
 
-**Nothing is committed to git.**
+**The reader-facing change is barely measured.** The new instructions ask the answering
+model to name what the top hits are about and leave the verdict to the reader. That has
+been run once, on one non-Anthropic model and a single query, and no strong reader has
+exercised it — so the repair for the first debt above is directional, not proven. No
+`OPENROUTER_API_KEY` is configured, so a second model cannot be tested without one.
 
 ---
 

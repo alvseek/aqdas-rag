@@ -1,8 +1,9 @@
 """Measure what separates an on-topic query from an off-topic one.
 
-A relevance floor is needed, but picking the number by feel is how a pipeline
-acquires a constant nobody can defend later. So this measures the separation on
-real queries first, and the floor is read off the gap rather than typed into it.
+Whether a relevance floor can work at all is a question to measure, not assume.
+This reports the separation on a real query set, and on this corpus the two
+groups overlap -- which is why the gate is off (ADR-007). Re-run it to re-check
+that conclusion rather than trusting it.
 
 The statistic is **IDF-mass coverage**: of the total rarity-weight of the terms
 in the question, what fraction is actually present in the retrieved unit. Raw
@@ -64,8 +65,8 @@ OFF_TOPIC = [
 def best_coverage(retriever: BM25Retriever, query: str) -> tuple[float, str]:
     """Coverage of the best-covered document for this query.
 
-    Uses the retriever's own coverage method -- the same one the live floor
-    enforces -- so this calibration measures the thing it is calibrating
+    Uses the retriever's own coverage method -- the same one the retriever's
+    `floor` parameter consults -- so this measures the thing it is calibrating
     rather than a reimplementation that happens to agree today.
     """
     terms = set(tokenize(query))

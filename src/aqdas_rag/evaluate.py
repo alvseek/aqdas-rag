@@ -79,8 +79,9 @@ class Score:
 
 
 def rank_of_gold(retriever, case: EvalCase, depth: int) -> int | None:
-    # floor=0: the relevance floor is a separate safety mechanism, and applying
-    # it here would conflate "could not find it" with "declined to answer".
+    # floor=0: every backend is measured on what it can find, never on whether
+    # the pipeline would have declined to answer -- and no gate is applied in
+    # the serving path either (ADR-007).
     hits = retriever.search(case.query, k=depth, floor=0.0)
     for position, hit in enumerate(hits, start=1):
         if hit.citation == case.gold:

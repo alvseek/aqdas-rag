@@ -73,8 +73,7 @@ def fold(text: str) -> str:
 
 # Conservative suffix stripping. Without it a reader asking about "drinking"
 # reaches nothing, because the translation says "drink" -- the question fails
-# on morphology rather than on meaning, and the floor then reports the book as
-# silent on something it plainly addresses.
+# on morphology rather than on meaning.
 #
 # "-eth" is here because the register demands it: this is 19th-century English
 # and the text is full of stealeth, behooveth, prescribeth. A general-purpose
@@ -170,9 +169,9 @@ class BM25Retriever:
         discuss, that absence is the answer, and a statistic that ignored the
         unknown words would report the query as well covered.
 
-        The live relevance floor and calibrate.py both call this, so the
-        measurement that justified the floor and the filter that enforces it
-        cannot drift apart.
+        `calibrate.py` calls this, and the retriever's `floor` parameter still
+        consults it, so re-running the measurement that retired the gate
+        (ADR-007) measures the same statistic the gate would have used.
         """
         if not terms:
             return 0.0
