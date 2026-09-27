@@ -241,7 +241,7 @@ Live at **`https://aqdas.lok.quest/mcp`** — a public, unauthenticated remote M
   `AQDAS_HOST` and `AQDAS_PORT`, and a `GET /health` route serves the health checks.
 - **Where**: a container on the Munnin VPS (`198.44.26.137`), on the `kamal` Docker
   network, fronted by the box's existing `kamal-proxy` for TLS. It is not managed by
-  Kamal; [deploy/README.md](deploy/README.md) carries the build, ship and redeploy steps.
+  Kamal; the build, ship and redeploy steps live in the private `rag-mcp-deploy` repo.
 - **Corpus**: `data/` is gitignored, so the image derives it during the build — `fetch`,
   `parse`, and a warmed embedding matrix. That is the "first-run index build" the design
   anticipated, moved into the image so the runtime needs no network and no cold start.
