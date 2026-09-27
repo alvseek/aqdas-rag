@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # setup-uv publishes no floating major tag past v7, so pin the exact release.
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: uv sync
+      # The corpus is gitignored, so it has to be derived before the contract
+      # test can run. `parse` reads the fragments `fetch` just downloaded.
+      - name: Build the corpus
+        run: |
+          uv run python -m aqdas_rag.fetch
+          uv run python -m aqdas_rag.parse
+      # Nine checks over a real in-memory MCP client session -- the tools
+      # register, a citation is returned verbatim, an invalid one is refused,
+      # an off-topic query still returns passages.
+      - name: Test the MCP contract
+        run: uv run python -m aqdas_rag.smoke_test
