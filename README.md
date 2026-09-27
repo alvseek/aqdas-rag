@@ -3,6 +3,9 @@
 A retrieval agent over the **Kitáb-i-Aqdas** that answers with citations you can click
 and verify, served to any agent over MCP.
 
+Hosted at **`https://aqdas.lok.quest/mcp`** — point any MCP client at that URL, or run it
+locally below.
+
 ```sh
 uv sync
 uv run python -m aqdas_rag.fetch        # download the text

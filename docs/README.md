@@ -229,20 +229,27 @@ The serving path makes **no network calls**. Everything it needs is on disk.
 
 ## How Is It Deployed?
 
-Not deployed. It runs locally as a stdio MCP server launched by the MCP client:
+Live at **`https://aqdas.lok.quest/mcp`** — a public, unauthenticated remote MCP server, so any MCP client can query the book with no local install. It also still runs locally as a stdio MCP server launched by the MCP client:
 
 ```json
 {"command": "uv", "args": ["run", "--directory", "C:\\Work\\research\\aqdas-rag",
                             "python", "-m", "aqdas_rag.server"]}
 ```
 
-Intended target is a CPU-only cloud server, which the design already accommodates: query
-embedding costs 7.8 ms and the serving path needs no GPU and no network. The one
-deployment cost to plan for is the **first-run index build** — several minutes on CPU —
-so ship `data/embeddings/` with the image or build it once at deploy rather than on
-first request.
+- **Transport** is streamable HTTP on the server, stdio locally: `main()` reads
+  `AQDAS_TRANSPORT` (default `stdio`, so the registration above is unchanged),
+  `AQDAS_HOST` and `AQDAS_PORT`, and a `GET /health` route serves the health checks.
+- **Where**: a container on the Munnin VPS (`198.44.26.137`), on the `kamal` Docker
+  network, fronted by the box's existing `kamal-proxy` for TLS. It is not managed by
+  Kamal; [deploy/README.md](deploy/README.md) carries the build, ship and redeploy steps.
+- **Corpus**: `data/` is gitignored, so the image derives it during the build — `fetch`,
+  `parse`, and a warmed embedding matrix. That is the "first-run index build" the design
+  anticipated, moved into the image so the runtime needs no network and no cold start.
+- **Footprint**: ~560 MB resident once the embedding model is loaded, on a 2 GB box that
+  also serves Munnin.
 
-[TODO: target host, process manager, and whether the MCP transport will stay stdio or move to HTTP]
+Known gaps: no authentication (any caller spends CPU), no swap on the host, and the image
+is built and shipped by hand.
 
 ---
 
