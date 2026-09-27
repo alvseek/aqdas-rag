@@ -1,0 +1,4 @@
+# Shell scripts are executed by bash on the Linux box. A CRLF shebang makes the
+# kernel look for an interpreter named `bash\r` and report the *script* as not
+# found, so these must materialize as LF everywhere.
+*.sh text eol=lf

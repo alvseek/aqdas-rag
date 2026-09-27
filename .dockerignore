@@ -1,0 +1,13 @@
+# Never sent to the daemon. data/ is derived inside the image at build time,
+# and the rest is local state.
+.git
+.gitignore
+.gitattributes
+.venv
+__pycache__
+*.pyc
+data/
+.mcp.json
+deploy/
+Dockerfile
+.dockerignore

@@ -14,9 +14,12 @@ is checkable rather than merely promised.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from aqdas_rag.hybrid import HybridRetriever
 from aqdas_rag.retrieve import Corpus, expand_with_structure
@@ -187,8 +190,35 @@ def corpus_stats() -> dict[str, Any]:
     }
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health(_request: Request) -> JSONResponse:
+    """Liveness only — for the container healthcheck and the reverse proxy.
+
+    It answers whether the process is up, not whether a query will be any
+    good. The corpus is built at import, so a process that answers this at
+    all already holds its text.
+    """
+    return JSONResponse({"status": "ok"})
+
+
 def main() -> None:
-    mcp.run()
+    """Run the server.
+
+    stdio by default, so the committed `.mcp.json` keeps working for a local
+    client. A remote client (claude.ai, another agent) is reached by serving
+    streamable HTTP instead: set ``AQDAS_TRANSPORT=http`` with ``AQDAS_HOST``
+    and ``AQDAS_PORT``.
+    """
+    transport = os.environ.get("AQDAS_TRANSPORT", "stdio")
+    if transport == "stdio":
+        mcp.run()
+        return
+
+    mcp.run(
+        transport=transport,
+        host=os.environ.get("AQDAS_HOST", "127.0.0.1"),
+        port=int(os.environ.get("AQDAS_PORT", "8300")),
+    )
 
 
 if __name__ == "__main__":
