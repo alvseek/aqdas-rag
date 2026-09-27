@@ -4,7 +4,7 @@ name: Build image
 # publishing from them would fill the registry with tags nothing deploys.
 on:
   push:
-    branches: [main]
+    branches: [master]
     tags: ["v*"]
   workflow_dispatch:
 
